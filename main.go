@@ -31,11 +31,11 @@ func main() {
 	// First-come, first-serve scheduling
 	FCFSSchedule(os.Stdout, "First-come, first-serve", processes)
 
-	//SJFSchedule(os.Stdout, "Shortest-job-first", processes)
+	SJFSchedule(os.Stdout, "Shortest-job-first", processes)
 	//
-	//SJFPrioritySchedule(os.Stdout, "Priority", processes)
+	SJFPrioritySchedule(os.Stdout, "Priority", processes)
 	//
-	//RRSchedule(os.Stdout, "Round-robin", processes)
+	RRSchedule(os.Stdout, "Round-robin", processes)
 }
 
 func openProcessingFile(args ...string) (*os.File, func(), error) {
@@ -61,11 +61,12 @@ type (
 		ProcessID     int64
 		ArrivalTime   int64
 		BurstDuration int64
-		Priority      int64
+		Priority      int
 		Name          string
+		Burst         int64
 		Completed     bool
-		Turnaround    int64
-		Waiting       int64
+		Turnaround    int
+		Waiting       int
 	}
 	TimeSlice struct {
 		PID   int64
@@ -257,8 +258,7 @@ func findShortestJob(remaining []Process, serviceTime int64) *Process {
 	var shortest *Process
 	for i := range remaining {
 		if remaining[i].ArrivalTime > serviceTime {
-			// The remaining processes are sorted by arrival time, so we can stop checking if this process
-			// has not yet arrived
+
 			break
 		}
 		if shortest == nil || remaining[i].BurstDuration < shortest.BurstDuration {
@@ -290,7 +290,7 @@ func RRSchedule(w io.Writer, title string, processes []Process, quantum int) {
 	fmt.Fprintf(w, "==== %s ====\n\n", title)
 
 	for len(processes) > 0 || qSize > 0 {
-		// Move new processes to the ready queue
+
 		for len(processes) > 0 && processes[0].ArrivalTime <= currentTime {
 			readyQueue.processes = append(readyQueue.processes, processes[0])
 			processes = processes[1:]
@@ -302,15 +302,12 @@ func RRSchedule(w io.Writer, title string, processes []Process, quantum int) {
 			continue
 		}
 
-		// Get the next process in the ready queue
 		process := readyQueue.processes[qIndex]
 
-		// Execute process for the current quantum or until it finishes
 		executedTime := min(process.BurstTime, quantum)
 		currentTime += executedTime
 		process.BurstTime -= executedTime
 
-		// Update waiting time for all other processes in the queue
 		for i := 0; i < qSize; i++ {
 			if i == qIndex {
 				continue
@@ -318,7 +315,6 @@ func RRSchedule(w io.Writer, title string, processes []Process, quantum int) {
 			readyQueue.processes[i].WaitingTime += executedTime
 		}
 
-		// Remove finished processes
 		if process.BurstTime == 0 {
 			finishedProcesses++
 			qSize--
